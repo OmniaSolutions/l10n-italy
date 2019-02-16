@@ -56,7 +56,7 @@
         <field name="name">fatturapa.attachment.in.tree</field>
         <field name="model">fatturapa.attachment.in</field>
         <field name="arch" type="xml">
-            <tree string="Xml Attachment">
+            <tree string="Xml Attachment" decoration-danger="invoices_number==0">
                 <field name="name"></field>
                 <field name="create_date"></field>
                 <field name="xml_supplier_id"/>

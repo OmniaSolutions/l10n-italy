@@ -23,8 +23,8 @@
     'data': [
         'views/account.xml',
         'views/fatturapa_attachment_out.xml',
-        'wizard/send_pec_view.xml',
-        'security/ir.model.access.csv'
+        'views/sdi_channel.xml',
+        'wizard/send_ftp_view.xml',
     ],
     'installable': True
 }

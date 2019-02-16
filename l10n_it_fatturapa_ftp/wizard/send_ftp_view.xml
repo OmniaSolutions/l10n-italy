@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="wizard_fatturapa_send_pec_view" model="ir.ui.view">
-        <field name="name">wizard_fatturapa_send_pec_view</field>
-        <field name="model">wizard.fatturapa.send.pec</field>
+    <record id="wizard_fatturapa_send_ftp_view" model="ir.ui.view">
+        <field name="name">wizard_fatturapa_send_ftp_view</field>
+        <field name="model">wizard.fatturapa.send.ftp</field>
         <field name="arch" type="xml">
             <form string="Send Electronic Invoice">
                 <sheet>
@@ -11,7 +11,7 @@
                     </group>
                 </sheet>
                 <footer>
-                    <button name="send_pec" string="Send"
+                    <button name="send_ftp" string="Send"
                             type="object" class="oe_highlight"/>
                     <button special="cancel" string="Cancel"/>
                 </footer>
@@ -19,12 +19,12 @@
         </field>
     </record>
 
-    <act_window id="action_wizard_fatturapa_send_pec"
+    <act_window id="action_wizard_fatturapa_send_ftp"
                 key2="client_action_multi"
                 name="Send Electronic Invoice"
-                res_model="wizard.fatturapa.send.pec"
+                res_model="wizard.fatturapa.send.ftp"
                 src_model="fatturapa.attachment.out"
                 target="new"
-                view_id="wizard_fatturapa_send_pec_view"
+                view_id="wizard_fatturapa_send_ftp_view"
                 view_mode="form"/>
 </odoo>

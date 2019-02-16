@@ -5,11 +5,10 @@
 from odoo import models, fields, api, _, exceptions
 from odoo.addons.base.ir.ir_mail_server import extract_rfc2822_addresses
 
-SDI_CHANNELS = [
-    ('pec', 'PEC'),
-    # ('web', 'Web service'), # not implemented
-    # ('sftp', 'SFTP'), # not implemented
-]
+SDI_CHANNELS = [('pec', 'PEC'),
+                # ('web', 'Web service'), # not implemented
+                ('sftp', 'SFTP'),
+                ]
 
 
 class SdiChannel(models.Model):

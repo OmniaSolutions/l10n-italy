@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <record id="view_sdi_channel_form_ftp" model="ir.ui.view">
+        <field name="model">sdi.channel</field>
+        <field name="name">view.sdi.channel.form.ftp</field>
+        <field name="inherit_id" ref="l10n_it_sdi_channel.view_sdi_channel_form"/>
+        <field name="arch" type="xml">
+	        <xpath expr="//group/group[last()]" position="after">
+		        <group attrs="{'invisible': [('channel_type', '!=', 'ftp')]}">
+		            <field name="folder_from_sdi"/>
+		            <field name="folder_to_sdi"/>
+		        </group>
+	        </xpath>
+        </field>
+    </record>
+</odoo>

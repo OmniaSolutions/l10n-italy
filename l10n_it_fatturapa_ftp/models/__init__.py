@@ -4,3 +4,4 @@
 from . import account
 from . import fatturapa_attachment_out
 from . import ftp_pa
+from . import sdi_channel

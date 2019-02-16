@@ -3,21 +3,25 @@
 # Copyright 2018 Openforce Srls Unipersonale (www.openforce.it)
 # Copyright 2018 Sergio Corato (https://efatto.it)
 # Copyright 2018-2019 Lorenzo Battistini <https://github.com/eLBati>
+# Copyright 2018-2019 Matteo Boscolo (OmniaSolutions.eu)
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl).
 
 import logging
 import re
-
+import os
 from lxml import etree
-
-from odoo import api, fields, models, _
+from odoo import api
+from odoo import fields
+from odoo import models
+from odoo import _
 from odoo.exceptions import UserError
-from odoo.addons.base.ir.ir_mail_server import MailDeliveryException
 
 _logger = logging.getLogger(__name__)
 
 RESPONSE_MAIL_REGEX = '[A-Z]{2}[a-zA-Z0-9]{11,16}_[a-zA-Z0-9]{,5}_[A-Z]{2}_' \
                       '[a-zA-Z0-9]{,3}'
+
+#FATTURA_PA_OUT = r"/home/mboscolo/Documents/Clienti/CONTINUITY/FATTURE_PA_OUT/"
 
 
 class FatturaPAAttachmentOut(models.Model):
@@ -50,22 +54,29 @@ class FatturaPAAttachmentOut(models.Model):
                 )
             att.state = 'ready'
 
-    @api.model
-    def _check_fetchmail(self):
-        server = self.env['fetchmail.server'].search([
-            ('is_fatturapa_pec', '=', True),
-            ('state', '=', 'done')
-        ])
-        if not server:
-            raise UserError(_(
-                "No incoming PEC server found. Please configure it."))
-
     @api.multi
     def send_via_ftp(self):
-        pass
-    #    TODO:
-        # write the file in the proper folder
-        # update the file for sending infos
+        for fatturapa_attachment_out_id in self:
+            if fatturapa_attachment_out_id.state == 'ready':
+                try:
+                    logging.info('Send file to ftp %r' % fatturapa_attachment_out_id.datas_fname)
+                    folder_from = False
+                    for account_config_settings_id in self.env['account.config.settings'].search([]):
+                        if account_config_settings_id.sdi_channel_id.channel_type == 'ftp':
+                            folder_from = account_config_settings_id.sdi_channel_id.folder_to_sdi
+                            break
+                    if not folder_from:
+                        logging.error("Unable to retrive information for folder from")
+                        return
+                    file_name = os.path.join(folder_from, fatturapa_attachment_out_id.datas_fname)
+                    xml_content = fatturapa_attachment_out_id.datas.decode('base64')
+                    with open(file_name, 'wb') as f:
+                        f.write(xml_content)
+                    fatturapa_attachment_out_id.state = 'sent'
+                except Exception as ex:
+                    logging.error(ex)
+                    fatturapa_attachment_out_id.message_post(body="<b>Error sending to local FTP Folder</b>")
+                    fatturapa_attachment_out_id.state = 'sender_error'
 
     @api.multi
     def parse_pec_response(self, message_dict):

@@ -90,8 +90,21 @@ class Attachment(models.Model):
                     ) % e.args
                 )
 
+        # Amazon sends xml files without <?xml declaration,
+        # so they cannot be easily detected using a pattern.
+        # We first try to parse as asn1, if it fails we assume xml
+
+        # asn1crypto parser will raise ValueError
+        # if the asn1 cannot be parsed
+        # KeyError is raised if one of the needed key is not
+        # in the asn1 structure (info->content->encap_content_info->content)
         try:
-            return self.cleanup_xml(self.extract_cades(data))
+            data = self.extract_cades(data)
+        except (ValueError, KeyError):
+            pass
+
+        try:
+            return self.cleanup_xml(data)
         except (ValueError, KeyError) as e:
             raise UserError(
                 _(

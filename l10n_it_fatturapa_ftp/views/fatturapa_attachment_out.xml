@@ -27,6 +27,7 @@
                     <field name="sending_user" readonly="1" class="oe_inline"/> on
                     <field name="sending_date" readonly="1" class="oe_inline"/>
                 </div>
+                <field name="file_hash"/>
                 <label for="delivered_date" string="Delivered" attrs="{'invisible': [('delivered_date' ,'=', False)]}"/>
                 <div name="delivered_date" attrs="{'invisible': [('delivered_date' ,'=', False)]}">
                     <field name="delivered_date" readonly="1" class="oe_inline"/>

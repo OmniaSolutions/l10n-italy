@@ -11,6 +11,8 @@ import re
 import os
 import glob
 import shutil
+import hashlib
+import sys
 from lxml import etree
 from odoo import api
 from odoo import fields
@@ -22,6 +24,14 @@ _logger = logging.getLogger(__name__)
 
 RESPONSE_MAIL_REGEX = '[A-Z]{2}[a-zA-Z0-9]{11,16}_[a-zA-Z0-9]{,5}_[A-Z]{2}_' \
                       '[a-zA-Z0-9]{,3}'
+
+
+def sha256_checksum(filename, block_size=65536):
+    sha256 = hashlib.sha256()
+    with open(filename, 'rb') as f:
+        for block in iter(lambda: f.read(block_size), b''):
+            sha256.update(block)
+    return sha256.hexdigest()
 
 
 class FatturaPAAttachmentOut(models.Model):
@@ -44,6 +54,7 @@ class FatturaPAAttachmentOut(models.Model):
     sending_date = fields.Datetime("Sent Date", readonly=True)
     delivered_date = fields.Datetime("Delivered Date", readonly=True)
     sending_user = fields.Many2one("res.users", "Sending User", readonly=True)
+    file_hash = fields.Char("File Hash Number", readonly=True)
 
     @api.multi
     def reset_to_ready(self):
@@ -64,6 +75,7 @@ class FatturaPAAttachmentOut(models.Model):
                     xml_content = fatturapa_attachment_out_id.datas.decode('base64')
                     with open(file_name, 'wb') as f:
                         f.write(xml_content)
+                    fatturapa_attachment_out_id.file_hash = sha256_checksum(file_name)
                     fatturapa_attachment_out_id.state = 'sent'
                 except Exception as ex:
                     logging.error(ex)

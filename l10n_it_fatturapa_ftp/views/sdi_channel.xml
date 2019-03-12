@@ -7,9 +7,9 @@
         <field name="inherit_id" ref="l10n_it_sdi_channel.view_sdi_channel_form"/>
         <field name="arch" type="xml">
 	        <xpath expr="//group/group[last()]" position="after">
-		        <group attrs="{'invisible': [('channel_type', '!=', 'ftp')]}">
-		            <field name="folder_from_sdi"/>
-		            <field name="folder_to_sdi"/>
+		        <group attrs="{'invisible': [('channel_type', '!=', 'ftp')]}" col="3" colspan="4">
+		            <field name="folder_from_sdi"/> <button string="Get Customer Invoice" name="getInvoiceDataFromSdi" type="object"/>
+		            <field name="folder_to_sdi"/><button string="Get XML Responce" name="getResponceDataFromSdi" type="object"/>
 		        </group>
 	        </xpath>
         </field>

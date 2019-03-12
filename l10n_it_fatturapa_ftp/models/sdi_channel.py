@@ -35,5 +35,20 @@ class SdiChannelFTP(models.Model):
     _inherit = "sdi.channel"
     channel_type = fields.Selection(selection_add=[('ftp', 'FTP')])
 
-    folder_from_sdi = fields.Char(string='Folder From SDI')
-    folder_to_sdi = fields.Char(string='Folder To SDI')
+    folder_from_sdi = fields.Char(string='Folder From SDI',
+                                  help="Folder where SDI push the Supplier Invoice")
+    folder_to_sdi = fields.Char(string='Folder To SDI',
+                                help="Folder where SDI get the Customer Invoice")
+
+    @api.multi
+    def getResponceDataFromSdi(self):
+        self.env["fatturapa.attachment.out"].sudo().get_xml_sdi_responce()
+
+    @api.multi
+    def getInvoiceDataFromSdi(self):
+        self.env["fatturapa.ftp"].sudo().get_xml_customer_invoice()
+
+    @api.multi
+    def getAllDataFromSdi(self):
+        self.getResponceDataFromSdi()
+        self.getInvoiceDataFromSdi()

@@ -32,7 +32,7 @@ class FatturaPAAttachmentOut(models.Model):
                               ('accepted', 'Accepted'),
                               ],
                              string='State',
-                             default='ready',)
+                             default='ready', track_visibility='onchange')
 
     last_sdi_response = fields.Text(
         string='Last Response from Exchange System', default='No response yet',
@@ -69,6 +69,8 @@ class FatturaPAAttachmentOut(models.Model):
                 _("You can only send files in 'Ready to Send' state.")
             )
         for att in self:
+            if not att.datas or not att.datas_fname:
+                raise UserError(_("File content and file name are mandatory"))
             mail_message = self.env['mail.message'].create({
                 'model': self._name,
                 'res_id': att.id,

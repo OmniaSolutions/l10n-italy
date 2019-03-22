@@ -290,17 +290,20 @@ class WizardExportFatturapa(models.TransientModel):
 
     def _setRea(self, CedentePrestatore, company):
 
-        if company.fatturapa_rea_office and company.fatturapa_rea_number:
+        if (
+            company.fatturapa_rea_office and company.fatturapa_rea_number and
+            company.fatturapa_rea_liquidation
+        ):
+            # The required fields for IscrizioneREA (not required) are
+            # Ufficio, NumeroREA and StatoLiquidazione
             CedentePrestatore.IscrizioneREA = IscrizioneREAType(
-                Ufficio=(
-                    company.fatturapa_rea_office and
-                    company.fatturapa_rea_office.code or None),
-                NumeroREA=company.fatturapa_rea_number or None,
+                Ufficio=(company.fatturapa_rea_office.code or None),
+                NumeroREA=company.fatturapa_rea_number,
                 CapitaleSociale=(
                     company.fatturapa_rea_capital and
                     '%.2f' % company.fatturapa_rea_capital or None),
                 SocioUnico=(company.fatturapa_rea_partner or None),
-                StatoLiquidazione=company.fatturapa_rea_liquidation or None
+                StatoLiquidazione=company.fatturapa_rea_liquidation
                 )
 
     def _setContatti(self, CedentePrestatore, company):
@@ -364,7 +367,12 @@ class WizardExportFatturapa(models.TransientModel):
             fatturapa.FatturaElettronicaHeader.CessionarioCommittente.\
                 DatiAnagrafici.IdFiscaleIVA = IdFiscaleType(
                     IdPaese=partner.vat[0:2], IdCodice=partner.vat[2:])
-        if partner.company_type == 'company':
+        if partner.company_name:
+            # This is valorized by e-commerce orders typically
+            fatturapa.FatturaElettronicaHeader.CessionarioCommittente.\
+                DatiAnagrafici.Anagrafica = AnagraficaType(
+                    Denominazione=partner.company_name)
+        elif partner.company_type == 'company':
             fatturapa.FatturaElettronicaHeader.CessionarioCommittente.\
                 DatiAnagrafici.Anagrafica = AnagraficaType(
                     Denominazione=partner.name)
@@ -636,8 +644,8 @@ class WizardExportFatturapa(models.TransientModel):
             # see https://tinyurl.com/ycem923t
             # and '&#10;' would not be correctly visualized anyway
             # (for example firefox replaces '&#10;' with space)
-            Descrizione=line.name.replace('\n', ' ').encode(
-                'latin', 'ignore').decode('latin'),
+            Descrizione=line.name.replace('\n', ' ').replace('\t', ' ').
+            replace('\r', ' ').encode('latin', 'ignore').decode('latin'),
             PrezzoUnitario=('%.' + str(
                 price_precision
             ) + 'f') % prezzo_unitario,
@@ -648,12 +656,9 @@ class WizardExportFatturapa(models.TransientModel):
                 unidecode(line.uom_id.name)) or None,
             PrezzoTotale='%.2f' % line.price_subtotal,
             AliquotaIVA=AliquotaIVA)
-        if line.discount:
-            ScontoMaggiorazione = ScontoMaggiorazioneType(
-                Tipo='SC',
-                Percentuale='%.2f' % line.discount
-            )
-            DettaglioLinea.ScontoMaggiorazione.append(ScontoMaggiorazione)
+        DettaglioLinea.ScontoMaggiorazione.extend(
+            self.setScontoMaggiorazione(line))
+
         if aliquota == 0.0:
             if not line.invoice_line_tax_ids[0].kind_id:
                 raise UserError(
@@ -667,7 +672,8 @@ class WizardExportFatturapa(models.TransientModel):
         if line.product_id:
             if line.product_id.default_code:
                 CodiceArticolo = CodiceArticoloType(
-                    CodiceTipo='ODOO',
+                    CodiceTipo=self.env['ir.config_parameter'].sudo(
+                    ).get_param('fatturapa.codicetipo.odoo', 'ODOO'),
                     CodiceValore=line.product_id.default_code
                 )
                 DettaglioLinea.CodiceArticolo.append(CodiceArticolo)
@@ -679,6 +685,15 @@ class WizardExportFatturapa(models.TransientModel):
                 DettaglioLinea.CodiceArticolo.append(CodiceArticolo)
         body.DatiBeniServizi.DettaglioLinee.append(DettaglioLinea)
         return True
+
+    def setScontoMaggiorazione(self, line):
+        res = []
+        if line.discount:
+            res.append(ScontoMaggiorazioneType(
+                Tipo='SC',
+                Percentuale='%.2f' % line.discount
+            ))
+        return res
 
     def setDatiRiepilogo(self, invoice, body):
         for tax_line in invoice.tax_line_ids:
@@ -711,6 +726,9 @@ class WizardExportFatturapa(models.TransientModel):
 
     def setDatiPagamento(self, invoice, body):
         if invoice.payment_term_id:
+            payment_line_ids = invoice.get_receivable_line_ids()
+            if not payment_line_ids:
+                return True
             DatiPagamento = DatiPagamentoType()
             if not invoice.payment_term_id.fatturapa_pt_id:
                 raise UserError(
@@ -723,7 +741,6 @@ class WizardExportFatturapa(models.TransientModel):
             DatiPagamento.CondizioniPagamento = (
                 invoice.payment_term_id.fatturapa_pt_id.code)
             move_line_pool = self.env['account.move.line']
-            payment_line_ids = invoice.get_receivable_line_ids()
             for move_line_id in payment_line_ids:
                 move_line = move_line_pool.browse(move_line_id)
                 ImportoPagamento = '%.2f' % (

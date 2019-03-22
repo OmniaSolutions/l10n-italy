@@ -64,12 +64,6 @@ msgid "ABI"
 msgstr ""
 
 #. module: l10n_it_fatturapa
-#: code:addons/l10n_it_fatturapa/models/ir_attachment.py:67
-#, python-format
-msgid "ASN.1 structure is not parsable in DER."
-msgstr ""
-
-#. module: l10n_it_fatturapa
 #: model:ir.model.fields,help:l10n_it_fatturapa.field_account_invoice_efatt_stabile_organizzazione_provincia
 msgid ""
 "Acronym of the Province to which the municipality indicated in the "
@@ -125,12 +119,6 @@ msgid "Amount of Penalty"
 msgstr ""
 
 #. module: l10n_it_fatturapa
-#: code:addons/l10n_it_fatturapa/models/ir_attachment.py:42
-#, python-format
-msgid "An error with command 'openssl asn1parse' occurred: %s."
-msgstr ""
-
-#. module: l10n_it_fatturapa
 #: model:ir.model.fields,field_description:l10n_it_fatturapa.field_account_config_settings_fatturapa_art73
 #: model:ir.model.fields,field_description:l10n_it_fatturapa.field_account_invoice_art73
 #: model:ir.model.fields,field_description:l10n_it_fatturapa.field_res_company_fatturapa_art73
@@ -145,7 +133,7 @@ msgid ""
 msgstr ""
 
 #. module: l10n_it_fatturapa
-#: code:addons/l10n_it_fatturapa/models/partner.py:70
+#: code:addons/l10n_it_fatturapa/models/partner.py:73
 #, python-format
 msgid "As a natural person, partner %s must have Name and Surname."
 msgstr ""
@@ -179,6 +167,12 @@ msgstr ""
 #. module: l10n_it_fatturapa
 #: model:ir.model.fields,field_description:l10n_it_fatturapa.field_fatturapa_payment_detail_payment_bank_name
 msgid "Bank Name"
+msgstr ""
+
+#. module: l10n_it_fatturapa
+#: code:addons/l10n_it_fatturapa/models/ir_attachment.py:86
+#, python-format
+msgid "Base64 encoded file %s."
 msgstr ""
 
 #. module: l10n_it_fatturapa
@@ -234,6 +228,12 @@ msgid "Contract"
 msgstr ""
 
 #. module: l10n_it_fatturapa
+#: code:addons/l10n_it_fatturapa/models/ir_attachment.py:76
+#, python-format
+msgid "Corrupted attachment %s."
+msgstr ""
+
+#. module: l10n_it_fatturapa
 #: model:ir.model.fields,help:l10n_it_fatturapa.field_account_invoice_efatt_stabile_organizzazione_nazione
 msgid "Country code according to the ISO 3166-1 alpha-2 code standard"
 msgstr ""
@@ -273,19 +273,19 @@ msgid "Created on"
 msgstr "Kreiran"
 
 #. module: l10n_it_fatturapa
-#: code:addons/l10n_it_fatturapa/models/partner.py:100
+#: code:addons/l10n_it_fatturapa/models/partner.py:103
 #, python-format
 msgid "Customer %s: city is needed for XML generation."
 msgstr ""
 
 #. module: l10n_it_fatturapa
-#: code:addons/l10n_it_fatturapa/models/partner.py:104
+#: code:addons/l10n_it_fatturapa/models/partner.py:107
 #, python-format
 msgid "Customer %s: country is needed for XML generation."
 msgstr ""
 
 #. module: l10n_it_fatturapa
-#: code:addons/l10n_it_fatturapa/models/partner.py:92
+#: code:addons/l10n_it_fatturapa/models/partner.py:95
 #, python-format
 msgid "Customer %s: street is needed for XML generation."
 msgstr ""
@@ -357,7 +357,6 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_it_fatturapa.field_faturapa_activity_progress_display_name
 #: model:ir.model.fields,field_description:l10n_it_fatturapa.field_faturapa_summary_data_display_name
 #: model:ir.model.fields,field_description:l10n_it_fatturapa.field_welfare_fund_data_line_display_name
-#: model:ir.model.fields,field_description:l10n_it_fatturapa.field_welfare_fund_type_display_name
 msgid "Display Name"
 msgstr ""
 
@@ -580,6 +579,12 @@ msgid "Intermediary"
 msgstr ""
 
 #. module: l10n_it_fatturapa
+#: code:addons/l10n_it_fatturapa/models/ir_attachment.py:110
+#, python-format
+msgid "Invalid xml %s."
+msgstr ""
+
+#. module: l10n_it_fatturapa
 #: model:ir.model,name:l10n_it_fatturapa.model_account_invoice
 msgid "Invoice"
 msgstr ""
@@ -595,13 +600,13 @@ msgid "Is public document"
 msgstr ""
 
 #. module: l10n_it_fatturapa
-#: code:addons/l10n_it_fatturapa/models/partner.py:87
+#: code:addons/l10n_it_fatturapa/models/partner.py:90
 #, python-format
 msgid "Italian partner %s must have VAT Number or Fiscal Code."
 msgstr ""
 
 #. module: l10n_it_fatturapa
-#: code:addons/l10n_it_fatturapa/models/partner.py:96
+#: code:addons/l10n_it_fatturapa/models/partner.py:99
 #, python-format
 msgid "Italian partner %s: ZIP is needed for XML generation."
 msgstr ""
@@ -721,6 +726,7 @@ msgid "Municipality or city to which the Stable Organization refers"
 msgstr ""
 
 #. module: l10n_it_fatturapa
+#: model:ir.model.fields,field_description:l10n_it_fatturapa.field_welfare_fund_type_display_name
 #: model:ir.model.fields,field_description:l10n_it_fatturapa.field_welfare_fund_type_name
 msgid "Name"
 msgstr ""
@@ -816,18 +822,12 @@ msgid ""
 msgstr ""
 
 #. module: l10n_it_fatturapa
-#: code:addons/l10n_it_fatturapa/models/ir_attachment.py:61
-#, python-format
-msgid "Parsing PEM to DER file %s."
-msgstr ""
-
-#. module: l10n_it_fatturapa
 #: model:ir.model,name:l10n_it_fatturapa.model_res_partner
 msgid "Partner"
 msgstr ""
 
 #. module: l10n_it_fatturapa
-#: code:addons/l10n_it_fatturapa/models/partner.py:79
+#: code:addons/l10n_it_fatturapa/models/partner.py:82
 #, python-format
 msgid "Partner %s Addressee Code must be 7 characters long."
 msgstr ""
@@ -1121,18 +1121,6 @@ msgstr ""
 #: code:addons/l10n_it_fatturapa/models/company.py:61
 #, python-format
 msgid "Sequence %s can't use subsequences."
-msgstr ""
-
-#. module: l10n_it_fatturapa
-#: code:addons/l10n_it_fatturapa/models/ir_attachment.py:103
-#, python-format
-msgid "Signed Xml file %s."
-msgstr ""
-
-#. module: l10n_it_fatturapa
-#: code:addons/l10n_it_fatturapa/models/ir_attachment.py:109
-#, python-format
-msgid "Signed Xml file not decryptable."
 msgstr ""
 
 #. module: l10n_it_fatturapa

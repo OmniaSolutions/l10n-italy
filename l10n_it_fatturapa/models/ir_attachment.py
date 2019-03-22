@@ -14,8 +14,15 @@ from odoo.tools.translate import _
 
 _logger = logging.getLogger(__name__)
 
-re_xml = re.compile(br'(\xef\xbb\xbf)*\s*<\?xml', re.I)
-re_base64 = re.compile(br'^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$')
+
+try:
+    from asn1crypto import cms
+except (ImportError, IOError) as err:
+    _logger.debug(err)
+
+
+re_base64 = re.compile(
+    br'^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$')
 
 
 class Attachment(models.Model):
@@ -28,7 +35,7 @@ class Attachment(models.Model):
     @api.multi
     def _compute_ftpa_preview_link(self):
         for att in self:
-            att.ftpa_preview_link = '/fatturapa/preview/%s' % self.id
+            att.ftpa_preview_link = '/fatturapa/preview/%s' % att.id
 
     def remove_xades_sign(self, xml):
         # Recovering parser is needed for files where strings like
@@ -55,6 +62,7 @@ class Attachment(models.Model):
 
     @staticmethod
     def extract_cades(data):
+
         try:
             info = cms.ContentInfo.load(data)
         except Exception as ex:
@@ -76,9 +84,6 @@ class Attachment(models.Model):
                     'Corrupted attachment %s.'
                 ) % e.args
             )
-
-        if re_xml.match(data) is not None:
-            return self.cleanup_xml(data)
 
         if re_base64.match(data) is not None:
             try:
@@ -105,10 +110,12 @@ class Attachment(models.Model):
 
         try:
             return self.cleanup_xml(data)
-        except (ValueError, KeyError) as e:
+        # cleanup_xml calls root.iter(), but root is None if the parser fails
+        # Invalid xml 'NoneType' object has no attribute 'iter'
+        except AttributeError as e:
             raise UserError(
                 _(
-                    'Signed Xml file %s.'
+                    'Invalid xml %s.'
                 ) % e.args
             )
 

@@ -6,7 +6,7 @@
 
 {
     'name': 'Italian Localization - Fattura elettronica - Base',
-    'version': '10.0.2.3.3',
+    'version': '10.0.2.3.8',
     'category': 'Localization/Italy',
     'summary': 'Fatture elettroniche',
     'author': 'Davide Corio, Agile Business Group, Innoviu, '
@@ -41,7 +41,7 @@
     'external_dependencies': {
         'python': [
             'pyxb',  # pyxb 1.2.5
-            'asn1crypto',
+            'asn1crypto'
         ],
     }
 }

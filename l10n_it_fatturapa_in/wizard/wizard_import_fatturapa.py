@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import base64
 import logging
 from odoo import models, api, fields
 from odoo.tools import float_is_zero
@@ -279,17 +278,12 @@ class WizardImportFatturapa(models.TransientModel):
                 [
                     ('type_tax_use', '=', 'purchase'),
                     ('kind_id.code', '=', line.Natura),
-                    ('amount', '=', 0.0),
-                ])
+                    ('amount', '=', 0.0)
+                ], order='sequence', limit=1)
             if not account_taxes:
-                raise UserError(
+                self.log_inconsistency(
                     _('No tax with percentage '
                       '%s and nature %s found. Please configure this tax.')
-                    % (line.AliquotaIVA, line.Natura))
-            if len(account_taxes) > 1:
-                raise UserError(
-                    _('Too many taxes with percentage '
-                      '%s and nature %s found.')
                     % (line.AliquotaIVA, line.Natura))
         else:
             account_taxes = account_tax_model.search(
@@ -299,8 +293,7 @@ class WizardImportFatturapa(models.TransientModel):
                     ('price_include', '=', False),
                     # partially deductible VAT must be set by user
                     ('children_tax_ids', '=', False),
-                ]
-            )
+                ], order='sequence')
             if not account_taxes:
                 self.log_inconsistency(
                     _(
@@ -396,7 +389,8 @@ class WizardImportFatturapa(models.TransientModel):
         if line.Quantita:
             retLine['quantity'] = float(line.Quantita)
         if (
-            line.PrezzoTotale and line.PrezzoUnitario and line.Quantita and
+            float(line.PrezzoTotale) and float(line.PrezzoUnitario) and
+            line.Quantita and float(line.Quantita) and  # Quantita not required
             line.ScontoMaggiorazione
         ):
             retLine['discount'] = self._computeDiscount(line)
@@ -633,7 +627,7 @@ class WizardImportFatturapa(models.TransientModel):
                     dline.CodicePagamento or '',
                     'payment_data_id': payment_id
                 }
-                bankid = False
+                bank = False
                 payment_bank_id = False
                 if dline.BIC:
                     banks = BankModel.search(
@@ -646,14 +640,14 @@ class WizardImportFatturapa(models.TransientModel):
                                   " Can't create bank") % dline.BIC
                             )
                         else:
-                            bankid = BankModel.create(
+                            bank = BankModel.create(
                                 {
                                     'name': dline.IstitutoFinanziario,
                                     'bic': dline.BIC,
                                 }
-                            ).id
+                            )
                     else:
-                        bankid = banks[0].id
+                        bank = banks[0]
                 if dline.IBAN:
                     SearchDom = [
                         (
@@ -664,7 +658,7 @@ class WizardImportFatturapa(models.TransientModel):
                     ]
                     payment_bank_id = False
                     payment_banks = PartnerBankModel.search(SearchDom)
-                    if not payment_banks and not bankid:
+                    if not payment_banks and not bank:
                         self.log_inconsistency(
                             _(
                                 'BIC is required and not exist in Xml\n'
@@ -677,14 +671,15 @@ class WizardImportFatturapa(models.TransientModel):
                                 dline.IstitutoFinanziario or ''
                             )
                         )
-                    elif not payment_banks and bankid:
+                    elif not payment_banks and bank:
                         payment_bank_id = PartnerBankModel.create(
                             {
                                 'acc_number': dline.IBAN.strip(),
                                 'partner_id': partner_id,
-                                'bank_id': bankid,
-                                'bank_name': dline.IstitutoFinanziario,
-                                'bank_bic': dline.BIC
+                                'bank_id': bank.id,
+                                'bank_name': dline.IstitutoFinanziario
+                                or bank.name,
+                                'bank_bic': dline.BIC or bank.bic
                             }
                         ).id
                     if payment_banks:
@@ -851,7 +846,7 @@ class WizardImportFatturapa(models.TransientModel):
             'journal_id': purchase_journal.id,
             # 'origin': xmlData.datiOrdineAcquisto,
             'fiscal_position_id': False,
-            'payment_term_id': False,
+            'payment_term_id': partner.property_supplier_payment_term_id.id,
             'company_id': company.id,
             'fatturapa_attachment_in_id': fatturapa_attachment.id,
             'comment': comment
@@ -914,6 +909,7 @@ class WizardImportFatturapa(models.TransientModel):
         invoice_data['e_invoice_line_ids'] = [(6, 0, e_invoice_line_ids)]
         invoice = invoice_model.create(invoice_data)
         invoice._onchange_invoice_line_wt_ids()
+        invoice._onchange_payment_term_date_invoice()
         invoice.write(invoice._convert_to_write(invoice._cache))
         invoice_id = invoice.id
 
@@ -965,9 +961,9 @@ class WizardImportFatturapa(models.TransientModel):
         # 2.1.6
         RelInvoices = FatturaBody.DatiGenerali.DatiFattureCollegate
         if RelInvoices:
-            for RefInvoice in RelInvoices:
+            for rel_invoice in RelInvoices:
                 doc_datas = self._prepareRelDocsLine(
-                    invoice_id, RefInvoice, 'invoice')
+                    invoice_id, rel_invoice, 'invoice')
                 if doc_datas:
                     for doc_data in doc_datas:
                         rel_docs_model.create(doc_data)
@@ -1104,24 +1100,9 @@ class WizardImportFatturapa(models.TransientModel):
                 self._createPayamentsLine(PayDataId, PaymentLine, partner_id)
         # 2.5
         AttachmentsData = FatturaBody.Allegati
-        if AttachmentsData:
-            AttachModel = self.env['fatturapa.attachments']
-            for attach in AttachmentsData:
-                if not attach.NomeAttachment:
-                    name = _("Attachment without name")
-                else:
-                    name = attach.NomeAttachment
-                content = attach.Attachment
-                _attach_dict = {
-                    'name': name,
-                    'datas': base64.b64encode(str(content)),
-                    'datas_fname': name,
-                    'description': attach.DescrizioneAttachment or '',
-                    'compression': attach.AlgoritmoCompressione or '',
-                    'format': attach.FormatoAttachment or '',
-                    'invoice_id': invoice_id,
-                }
-                AttachModel.create(_attach_dict)
+        if AttachmentsData and invoice_id:
+            self.env['fatturapa.attachment.in'].extract_attachments(
+                AttachmentsData, invoice_id)
 
         self._addGlobalDiscount(
             invoice_id, FatturaBody.DatiGenerali.DatiGeneraliDocumento)

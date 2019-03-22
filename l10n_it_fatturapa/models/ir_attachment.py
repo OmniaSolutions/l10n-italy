@@ -20,7 +20,7 @@ try:
 except (ImportError, IOError) as err:
     _logger.debug(err)
 
-
+re_xml = re.compile(br'(\xef\xbb\xbf)*\s*<\?xml', re.I)
 re_base64 = re.compile(
     br'^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$')
 
@@ -84,6 +84,8 @@ class Attachment(models.Model):
                     'Corrupted attachment %s.'
                 ) % e.args
             )
+        if re_xml.match(data) is not None:
+            return self.cleanup_xml(data)
 
         if re_base64.match(data) is not None:
             try:

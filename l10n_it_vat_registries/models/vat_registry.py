@@ -62,6 +62,29 @@ class ReportRegistroIva(models.AbstractModel):
     def _get_move_line(self, move, data):
         return [move_line for move_line in move.line_ids]
 
+    def _get_good_tax(self, move_line):
+        tax = False
+        is_base = True
+        good_taxes = []
+        excluded_taxes = []
+        for tmptax in move_line.tax_ids:
+            if tmptax.exclude_from_registries:
+                excluded_taxes.append(tmptax)
+                continue
+            good_taxes.append(tmptax)
+        if good_taxes and len(good_taxes) != 1:
+                raise UserError(
+                    _("Move line %s has too many base taxes")
+                    % move_line.name)
+
+        if good_taxes:
+            tax = good_taxes[0]
+            is_base = True
+        else:
+            tax = move_line.tax_line_id
+            is_base = False
+        return tax, is_base, excluded_taxes
+        
     def _tax_amounts_by_tax_id(self, move, move_lines, registry_type):
         res = {}
 
@@ -70,18 +93,9 @@ class ReportRegistroIva(models.AbstractModel):
             if not(move_line.tax_line_id or move_line.tax_ids):
                 continue
 
-            if move_line.tax_ids and len(move_line.tax_ids) != 1:
-                    raise UserError(
-                        _("Move line %s has too many base taxes")
-                        % move_line.name)
-
-            if move_line.tax_ids:
-                tax = move_line.tax_ids[0]
-                is_base = True
-            else:
-                tax = move_line.tax_line_id
-                is_base = False
-
+            tax, is_base, _ = self._get_good_tax(move_line)
+            if not tax:
+                continue
             if (
                 (registry_type == 'customer' and tax.cee_type == 'sale') or
                 (registry_type == 'supplier' and tax.cee_type == 'purchase')
@@ -195,6 +209,40 @@ class ReportRegistroIva(models.AbstractModel):
         if 'refund' in move.move_type:
             total = -total
         return total
+
+#     def _get_move_total(self, move):
+#         total = 0.0
+#         receivable_payable_found = False
+#         for move_line in move.line_ids:
+#             tax, _is_base, _ = self._get_good_tax(move_line)
+#             if move_line.account_id.internal_type == 'receivable':
+#                 if tax:
+#                     total += move_line.debit or (- move_line.credit)
+#                     receivable_payable_found = True
+#             elif move_line.account_id.internal_type == 'payable':
+#                 if tax:
+#                     total += (- move_line.debit) or move_line.credit
+#                     receivable_payable_found = True
+#         if receivable_payable_found:
+#             total = abs(total)
+#         else:
+#             starting_amount = abs(move.amount)
+#             for move_line in move.line_ids:
+#                 _good_tax, _is_base, excluded_taxes = self._get_good_tax(move_line)
+#                 for tax in excluded_taxes:
+#                     res = tax.compute_all(move_line.product_id.list_price,
+#                                           move_line.currency_id,
+#                                           move_line.quantity,
+#                                           product=move_line.product_id,
+#                                           partner=move_line.partner_id)
+#                     if res:
+#                         taxes = res.get('taxes', [])
+#                         for tax in taxes:
+#                             starting_amount -= tax.get('amount', 0)
+#             total = abs(starting_amount)
+#         if 'refund' in move.move_type:
+#             total = -total
+#         return total
 
     def _compute_totals_tax(self, tax, data):
         """

@@ -105,9 +105,9 @@ class ReportRegistroIva(models.AbstractModel):
             elif tax.cee_type:
                 continue
 
-            if tax.parent_tax_ids and len(tax.parent_tax_ids) == 1:
-                # we group by main tax
-                tax = tax.parent_tax_ids[0]
+#             if tax.parent_tax_ids and len(tax.parent_tax_ids) == 1:
+#                 # we group by main tax
+#                 tax = tax.parent_tax_ids[0]
 
             if tax.exclude_from_registries:
                 continue

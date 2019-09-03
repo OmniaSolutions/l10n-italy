@@ -49,6 +49,11 @@ class ResCompany(models.Model):
         help='The fields must be entered only when the seller/provider is '
              'non-resident, with a stable organization in Italy'
         )
+    fatturapa_preview_style = fields.Selection([
+        ('fatturaordinaria_v1.2.1.xsl', 'FatturaOrdinaria v1.2.1'),
+        ('FoglioStileAssoSoftware_v1.1.xsl', 'AssoSoftware v1.1')],
+        string='Preview Format Style', required=True,
+        default='fatturaordinaria_v1.2.1.xsl')
 
     @api.multi
     @api.constrains(
@@ -137,6 +142,10 @@ class AccountConfigSettings(models.TransientModel):
         help='The fields must be entered only when the seller/provider is '
              'non-resident, with a stable organization in Italy'
         )
+    fatturapa_preview_style = fields.Selection(
+        related='company_id.fatturapa_preview_style',
+        string="Preview Format Style", required=True
+        )
 
     @api.onchange('company_id')
     def onchange_company_id(self):
@@ -190,6 +199,9 @@ class AccountConfigSettings(models.TransientModel):
                 company.fatturapa_stabile_organizzazione and
                 company.fatturapa_stabile_organizzazione.id or False
                 )
+            self.fatturapa_preview_style = (
+                company.fatturapa_preview_style or False
+                )
         else:
             self.fatturapa_fiscal_position_id = False
             self.fatturapa_sequence_id = False
@@ -203,4 +215,5 @@ class AccountConfigSettings(models.TransientModel):
             self.fatturapa_tax_representative = False
             self.fatturapa_sender_partner = False
             self.fatturapa_stabile_organizzazione = False
+            self.fatturapa_preview_style = 'fatturaordinaria_v1.2.1.xsl'
         return res

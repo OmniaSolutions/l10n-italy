@@ -7,7 +7,7 @@
 
 {
     'name': 'Italian Localization - Fattura elettronica - Emissione',
-    'version': '10.0.1.3.6',
+    'version': '10.0.1.5.1',
     'category': 'Localization/Italy',
     'summary': 'Emissione fatture elettroniche',
     'author': 'Davide Corio, Agile Business Group, Innoviu,'
@@ -28,6 +28,9 @@
     ],
     'installable': True,
     'external_dependencies': {
-        'python': ['unidecode'],
+        'python': [
+            'unidecode',
+            'pyxb',  # pyxb 1.2.6
+        ],
     }
 }

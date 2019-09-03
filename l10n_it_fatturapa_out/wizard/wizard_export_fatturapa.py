@@ -9,12 +9,14 @@
 import base64
 import logging
 import os
+import string
+import random
 
 from odoo import api, fields, models
 from odoo.tools.translate import _
 from odoo.exceptions import UserError
 
-from odoo.addons.l10n_it_fatturapa.bindings.fatturapa_v_1_2 import (
+from odoo.addons.l10n_it_fatturapa.bindings.fatturapa import (
     FatturaElettronica,
     FatturaElettronicaHeaderType,
     DatiTrasmissioneType,
@@ -51,10 +53,35 @@ from odoo.addons.l10n_it_fatturapa.models.account import (
 _logger = logging.getLogger(__name__)
 
 try:
+    from pyxb.utils import domutils
+    from pyxb.binding.datatypes import decimal as pyxb_decimal
     from unidecode import unidecode
     from pyxb.exceptions_ import SimpleFacetValueError, SimpleTypeValueError
 except ImportError as err:
     _logger.debug(err)
+
+
+def id_generator(
+    size=5, chars=string.ascii_uppercase + string.digits +
+    string.ascii_lowercase
+):
+    return ''.join(random.choice(chars) for dummy in range(size))
+
+
+class FatturapaBDS(domutils.BindingDOMSupport):
+
+    def valueAsText(self, value, enable_default_namespace=True):
+        if isinstance(value, pyxb_decimal) and hasattr(value, '_CF_pattern'):
+            # PyXB changes the text representation of decimals
+            # so that it breaks pattern matching.
+            # We have to use directly the string value
+            # instead of letting PyXB edit it
+            return str(value)
+        return super(FatturapaBDS, self) \
+            .valueAsText(value, enable_default_namespace)
+
+
+fatturapaBDS = FatturapaBDS()
 
 
 class WizardExportFatturapa(models.TransientModel):
@@ -73,50 +100,36 @@ class WizardExportFatturapa(models.TransientModel):
         help='This report will be automatically included in the created XML')
 
     def saveAttachment(self, fatturapa, number):
-
-        company = self.env.user.company_id
-
-        if not company.vat:
-            raise UserError(
-                _('Company %s TIN not set.') % company.name)
-        if (
-            company.fatturapa_sender_partner and not
-            company.fatturapa_sender_partner.vat
-        ):
-            raise UserError(
-                _('Partner %s TIN not set.')
-                % company.fatturapa_sender_partner.name
-            )
-        vat = company.vat
-        if company.fatturapa_sender_partner:
-            vat = company.fatturapa_sender_partner.vat
-        vat = vat.replace(' ', '').replace('.', '').replace('-', '')
         attach_obj = self.env['fatturapa.attachment.out']
+        vat = attach_obj.get_file_vat()
+
+        attach_str = fatturapa.toxml(
+            encoding="UTF-8",
+            bds=fatturapaBDS,
+        )
+        fatturapaBDS.reset()
         attach_vals = {
-            'name': '%s_%s.xml' % (vat, str(number)),
-            'datas_fname': '%s_%s.xml' % (vat, str(number)),
-            'datas': base64.encodestring(fatturapa.toxml("UTF-8")),
+            'name': '%s_%s.xml' % (vat, number),
+            'datas_fname': '%s_%s.xml' % (vat, number),
+            'datas': base64.encodestring(attach_str),
         }
         return attach_obj.create(attach_vals)
 
     def setProgressivoInvio(self, fatturapa):
 
-        company = self.env.user.company_id
-        fatturapa_sequence = company.fatturapa_sequence_id
-        if not fatturapa_sequence:
-            raise UserError(
-                _('E-invoice sequence not configured.'))
-        number = fatturapa_sequence.next_by_id()
+        file_id = id_generator()
+        while self.env['fatturapa.attachment.out'].file_name_exists(file_id):
+            file_id = id_generator()
         try:
             fatturapa.FatturaElettronicaHeader.DatiTrasmissione.\
-                ProgressivoInvio = number
+                ProgressivoInvio = file_id
         except (SimpleFacetValueError, SimpleTypeValueError) as e:
             msg = _(
                 'FatturaElettronicaHeader.DatiTrasmissione.'
                 'ProgressivoInvio:\n%s'
             ) % unicode(e)
             raise UserError(msg)
-        return number
+        return file_id
 
     def _setIdTrasmittente(self, company, fatturapa):
 
@@ -347,16 +360,20 @@ class WizardExportFatturapa(models.TransientModel):
     def _setDatiAnagraficiCessionario(self, partner, fatturapa):
         fatturapa.FatturaElettronicaHeader.CessionarioCommittente.\
             DatiAnagrafici = DatiAnagraficiCessionarioType()
-        if (partner.codice_destinatario == 'XXXXXXX' and partner.country_id.code and partner.country_id.code != 'IT'):
-            # SDI accepts missing VAT# for foreign customers by setting a
-            # fake IdCodice and a valid IdPaese
-            # Otherwise raise error if we have no VAT# and no Fiscal code
-            fatturapa.FatturaElettronicaHeader.CessionarioCommittente.\
-                DatiAnagrafici.IdFiscaleIVA = IdFiscaleType(
-                    IdPaese=partner.country_id.code,
-                    IdCodice='99999999999')
-        else:
-            if not partner.vat and not partner.fiscalcode:
+        if not partner.vat and not partner.fiscalcode:
+            if (
+                    partner.codice_destinatario == 'XXXXXXX'
+                    and partner.country_id.code
+                    and partner.country_id.code != 'IT'
+            ):
+                # SDI accepts missing VAT# for foreign customers by setting a
+                # fake IdCodice and a valid IdPaese
+                # Otherwise raise error if we have no VAT# and no Fiscal code
+                fatturapa.FatturaElettronicaHeader.CessionarioCommittente.\
+                    DatiAnagrafici.IdFiscaleIVA = IdFiscaleType(
+                        IdPaese=partner.country_id.code,
+                        IdCodice='99999999999')
+            else:
                 raise UserError(
                     _('VAT number and fiscal code are not set for %s.') %
                     partner.name)
@@ -696,6 +713,10 @@ class WizardExportFatturapa(models.TransientModel):
         return res
 
     def setDatiRiepilogo(self, invoice, body):
+        if not invoice.tax_line_ids:
+            raise UserError(
+                _("Invoice {invoice} has no tax lines")
+                .format(invoice=invoice.display_name))
         for tax_line in invoice.tax_line_ids:
             tax = tax_line.tax_id
             riepilogo = DatiRiepilogoType(
@@ -751,16 +772,20 @@ class WizardExportFatturapa(models.TransientModel):
                     DataScadenzaPagamento=move_line.date_maturity,
                     ImportoPagamento=ImportoPagamento
                     )
-                if invoice.partner_bank_id:
-                    DettaglioPagamento.IstitutoFinanziario = (
-                        invoice.partner_bank_id.bank_name)
-                    if invoice.partner_bank_id.acc_number:
-                        DettaglioPagamento.IBAN = (
-                            ''.join(invoice.partner_bank_id.acc_number.split())
-                            )
-                    if invoice.partner_bank_id.bank_bic:
-                        DettaglioPagamento.BIC = (
-                            invoice.partner_bank_id.bank_bic)
+
+                # Add only the existing optional fields
+                if move_line.date_maturity:
+                    DettaglioPagamento.DataScadenzaPagamento = \
+                        move_line.date_maturity
+                partner_bank = invoice.partner_bank_id
+                if partner_bank.bank_name:
+                    DettaglioPagamento.IstitutoFinanziario = \
+                        partner_bank.bank_name
+                if partner_bank.acc_number:
+                    DettaglioPagamento.IBAN = \
+                        ''.join(partner_bank.acc_number.split())
+                if partner_bank.bank_bic:
+                    DettaglioPagamento.BIC = partner_bank.bank_bic
                 DatiPagamento.DettaglioPagamento.append(DettaglioPagamento)
             body.DatiPagamento.append(DatiPagamento)
         return True

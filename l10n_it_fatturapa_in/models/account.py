@@ -56,8 +56,7 @@ class AccountInvoice(models.Model):
         if (self.e_invoice_amount_untaxed and
                 float_compare(self.amount_untaxed,
                               self.e_invoice_amount_untaxed,
-                              precision_rounding=self.currency_id
-                              .rounding) != 0):
+                              precision_rounding=0.01) != 0):
             error_message = (
                 _("Untaxed amount ({bill_amount_untaxed}) "
                   "does not match with "
@@ -73,8 +72,7 @@ class AccountInvoice(models.Model):
         if (self.e_invoice_amount_tax and
                 float_compare(self.amount_tax,
                               self.e_invoice_amount_tax,
-                              precision_rounding=self.currency_id
-                              .rounding) != 0):
+                              precision_rounding=0.01) != 0):
             error_message = (
                 _("Taxed amount ({bill_amount_tax}) "
                   "does not match with "
@@ -90,8 +88,7 @@ class AccountInvoice(models.Model):
         if (self.e_invoice_amount_total and
                 float_compare(self.amount_total,
                               self.e_invoice_amount_total,
-                              precision_rounding=self.currency_id
-                              .rounding) != 0):
+                              precision_rounding=0.01) != 0):
             error_message = (
                 _("Total amount ({bill_amount_total}) "
                   "does not match with "
@@ -184,7 +181,7 @@ class AccountInvoice(models.Model):
         amount_untaxed = 0.0
         for Riepilogo in DatiRiepilogo:
             rounding = float(Riepilogo.Arrotondamento or 0.0)
-            amount_untaxed += float(Riepilogo.ImponibileImporto) + rounding
+            amount_untaxed += float(Riepilogo.ImponibileImporto)# + rounding
         return amount_untaxed
 
     @api.model

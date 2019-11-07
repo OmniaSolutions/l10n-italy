@@ -86,17 +86,17 @@ class AccountInvoice(models.Model):
     def e_inv_check_amount_total(self):
         error_message = ''
         if (self.e_invoice_amount_total and
-                float_compare(self.amount_total,
-                              self.e_invoice_amount_total,
-                              precision_rounding=0.01) != 0):
-            error_message = (
-                _("Total amount ({bill_amount_total}) "
-                  "does not match with "
-                  "e-bill total amount ({e_bill_amount_total})")
-                .format(
-                    bill_amount_total=self.amount_total or 0,
-                    e_bill_amount_total=self.e_invoice_amount_total
-                ))
+                float_compare(self.amount_total, self.e_invoice_amount_total, precision_rounding=0.01) != 0
+                ):
+            if float_compare(self.amount_net_pay, self.e_invoice_amount_total, precision_rounding=0.01) != 0 :
+                error_message = (
+                    _("Total amount ({bill_amount_total}) "
+                      "does not match with "
+                      "e-bill total amount ({e_bill_amount_total})")
+                    .format(
+                        bill_amount_total=self.amount_total or 0,
+                        e_bill_amount_total=self.e_invoice_amount_total
+                    ))
         return error_message
 
     @api.depends('type', 'state', 'fatturapa_attachment_in_id',

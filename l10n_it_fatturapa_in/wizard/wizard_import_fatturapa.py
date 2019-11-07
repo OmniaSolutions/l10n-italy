@@ -411,6 +411,7 @@ class WizardImportFatturapa(models.TransientModel):
                         (6, 0, [new_tax.id])]
 
     def _prepareInvoiceLine(self, credit_account_id, line, wt_found=False):
+        wt_line_found = False
         retLine = self._prepare_generic_line_data(line)
         retLine.update({
             'name': line.Descrizione,
@@ -432,8 +433,8 @@ class WizardImportFatturapa(models.TransientModel):
             retLine['admin_ref'] = line.RiferimentoAmministrazione
         if wt_found and line.Ritenuta:
             retLine['invoice_line_tax_wt_ids'] = [(6, 0, [wt_found.id])]
-
-        return retLine
+            wt_line_found = True
+        return retLine, wt_line_found
 
     def _prepareRelDocsLine(self, invoice_id, line, doc_type):
         res = []
@@ -897,17 +898,28 @@ class WizardImportFatturapa(models.TransientModel):
         wt_found = self.set_withholding_tax(FatturaBody, invoice_data)
 
         # 2.2.1
-        self.set_invoice_line_ids(
+        wt_line_found = self.set_invoice_line_ids(
             FatturaBody, credit_account_id, partner, wt_found, invoice_data)
 
         self.set_e_invoice_lines(FatturaBody, invoice_data)
 
         invoice = invoice_model.create(invoice_data)
-
         invoice._onchange_invoice_line_wt_ids()
         invoice._onchange_payment_term_date_invoice()
         invoice.write(invoice._convert_to_write(invoice._cache))
         invoice_id = invoice.id
+
+        if not wt_line_found and wt_found:
+            #tax = float(FatturaBody.DatiGenerali.DatiGeneraliDocumento.DatiRitenuta.AliquotaRitenuta)
+            base = float(FatturaBody.DatiGenerali.DatiGeneraliDocumento.DatiRitenuta.ImportoRitenuta)
+            vals = {
+                'invoice_id': invoice.id,
+                'withholding_tax_id': wt_found.id,
+                'base': 0,
+                'tax': abs(base),
+                }
+            self.env['account.invoice.withholding.tax'].create(vals)
+            invoice.withholding_tax = True
 
         self.set_vendor_bill_data(FatturaBody, invoice)
 
@@ -966,7 +978,6 @@ class WizardImportFatturapa(models.TransientModel):
             invoice_id, FatturaBody.DatiGenerali.DatiGeneraliDocumento)
 
         self.set_roundings(FatturaBody, invoice)
-
         # compute the invoice
         invoice.compute_taxes()
         return invoice_id
@@ -1270,9 +1281,12 @@ class WizardImportFatturapa(models.TransientModel):
 
         invoice_lines = []
         invoice_line_model = self.env['account.invoice.line']
+        wt_l_found = False
         for line in FatturaBody.DatiBeniServizi.DettaglioLinee:
-            invoice_line_data = self._prepareInvoiceLine(
+            invoice_line_data, wt_line_found = self._prepareInvoiceLine(
                 credit_account_id, line, wt_found)
+            if wt_line_found:
+                wt_l_found = wt_line_found
             product = self.get_line_product(line, partner)
             if product:
                 invoice_line_data['product_id'] = product.id
@@ -1280,7 +1294,11 @@ class WizardImportFatturapa(models.TransientModel):
             invoice_line_id = invoice_line_model.create(
                 invoice_line_data).id
             invoice_lines.append(invoice_line_id)
+        
         invoice_data['invoice_line_ids'] = [(6, 0, invoice_lines)]
+        if wt_found and not wt_l_found:
+            return False
+        return True
 
     def compute_xml_amount_untaxed(self, DatiRiepilogo):
         amount_untaxed = 0.0
